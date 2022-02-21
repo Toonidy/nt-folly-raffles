@@ -63,13 +63,13 @@ CREATE TABLE user_records (
 	UNIQUE (request_id, user_id)
 );
 
-/****************
-*  Competition  *
-****************/
+/************
+*  Raffles  *
+************/
 
-CREATE TABLE competitions (
+CREATE TABLE raffles (
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
-	name TEXT NOT NULL,
+	name TEXT UNIQUE,
 	start_at TIMESTAMPTZ NOT NULL,
 	finish_at TIMESTAMPTZ NOT NULL,
 
@@ -78,9 +78,6 @@ CREATE TABLE competitions (
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE competitions_to_user_records (
-	competition_id UUID NOT NULL, 
-	user_record_id UUID NOT NULL, 
-	
-	PRIMARY KEY (competition_id, user_record_id)
+CREATE TABLE raffle_tickets (
+	code TEXT PRIMARY KEY
 );

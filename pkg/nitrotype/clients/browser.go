@@ -60,7 +60,7 @@ func (c *APIClientBrowser) getRequest(url string, timeout int) ([]byte, error) {
 
 	err := chromedp.Run(ctx,
 		network.Enable(),
-		chromedp.Navigate(url),
+		chromedp.Navigate("view-source:"+url),
 	)
 	if err != nil {
 		return nil, err
