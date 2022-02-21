@@ -1,0 +1,11 @@
+[Unit]
+Description=Team Stat collection system for Folly Times.
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+ExecStart=/home/follyteam/bin/collection service --prod
+
+[Install]
+WantedBy=default.target

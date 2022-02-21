@@ -1,0 +1,36 @@
+scalar Time
+
+enum UserStatus {
+	NEW
+	ACTIVE
+	LEFT
+}
+
+enum MembershipType {
+	BASIC
+	GOLD
+}
+
+type User {
+	id: ID!
+	username: String!
+	displayName: String!
+	membershipType: MembershipType!
+	status: UserStatus!
+	createdAt: Time!
+	updatedAt: Time!
+	races: Int!
+	points: Int!
+}
+
+type Competition {
+	id: ID!
+	name: String!
+	startAt: Time!
+	finishAt: Time!
+	users: [User!]!
+}
+
+type Query {
+	competition(id: ID!): Competition!
+}

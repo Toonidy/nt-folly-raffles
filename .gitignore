@@ -1,0 +1,5 @@
+.vscode
+*.code-workspace
+nt-folly-silly-comp-*.yaml
+tmp
+dist/*
