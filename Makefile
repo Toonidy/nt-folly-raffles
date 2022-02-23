@@ -49,8 +49,12 @@ db-migrate-down-1:
 .PHONY: db-migrate-repeat-1
 db-migrate-repeat-1: db-migrate-down-1 db-migrate-up-1
 
+.PHONY: db-seed
+db-seed:
+	go run cmd/migrate/main.go seed
+
 .PHONY: db-reset
-db-reset: db-migrate-drop db-migrate-up
+db-reset: db-migrate-drop db-migrate-up db-seed
 
 .PHONY: gql
 gql:
