@@ -3,5 +3,5 @@ package build
 var (
 	Version           = "development"
 	BuildHash         = "development"
-	DefaultConfigFile = ".nt-folly-silly-comp"
+	DefaultConfigFile = ".nt-folly-comp"
 )

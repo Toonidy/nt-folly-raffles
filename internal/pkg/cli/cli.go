@@ -33,9 +33,9 @@ func InitConfig(rootCmd *cobra.Command) func() {
 	rootCmd.PersistentFlags().String("db_url", "", "database url to connect to (overrides the other db_* values)")
 	rootCmd.PersistentFlags().String("db_host", "localhost", "database host")
 	rootCmd.PersistentFlags().String("db_port", "5444", "database port")
-	rootCmd.PersistentFlags().String("db_user", "nt-folly-silly-comp", "database user")
+	rootCmd.PersistentFlags().String("db_user", "nt-folly-comp", "database user")
 	rootCmd.PersistentFlags().String("db_pass", "dev", "database password")
-	rootCmd.PersistentFlags().String("db_name", "nt-folly-silly-comp", "database name")
+	rootCmd.PersistentFlags().String("db_name", "nt-folly-comp", "database name")
 	rootCmd.PersistentFlags().String("db_sslmode", "disable", "database connection ssl mode")
 	rootCmd.PersistentFlags().Bool("db_debug", false, "whether to log queries for debugging purposes")
 

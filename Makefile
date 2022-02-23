@@ -1,4 +1,4 @@
-PACKAGE=nt-folly-xmaxx-comp
+PACKAGE=nt-folly-comp
 
 LOCAL_DEV_DB_USERNAME=$(PACKAGE)
 LOCAL_DEV_DB_PASS=dev
