@@ -45,10 +45,16 @@ func Run(ctx context.Context, conn *pgxpool.Pool, logger *zap.Logger) error { //
 	if err != nil {
 		return fmt.Errorf("timezone load failed: %w", err)
 	}
-	timeFrom := time.Date(2022, 2, 25, 21, 30, 0, 0, loc)
+	timeFrom := time.Date(2022, 2, 23, 21, 30, 0, 0, loc)
 	timeTo := time.Date(2022, 3, 4, 21, 30, 0, 0, loc)
 
-	q := `INSERT INTO competitions (name, start_at, finish_at) VALUES ($1, $2, $3)`
+	q := `INSERT INTO raffles (name, start_at, finish_at) VALUES ($1, $2, $3)`
+	_, err = tx.Exec(ctx, q, "Main Event", timeFrom, timeTo)
+	if err != nil {
+		return fmt.Errorf("insert main event failed: %w", err)
+	}
+
+	q = `INSERT INTO competitions (name, start_at, finish_at) VALUES ($1, $2, $3)`
 	_, err = tx.Exec(ctx, q, "Main Event", timeFrom, timeTo)
 	if err != nil {
 		return fmt.Errorf("insert main event failed: %w", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"nt-folly-xmaxx-comp/internal/pkg/utils"
 	"nt-folly-xmaxx-comp/pkg/nitrotype"
 	"time"
@@ -16,13 +17,22 @@ import (
 	"go.uber.org/zap"
 )
 
+const TicketPrice = 5
+
+type RaffleUser struct {
+	ID       string
+	RaffleID string
+	Amount   int
+}
+
 // NewCronService creates a new cron service ready to be activated
 func NewCronService(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClient nitrotype.APIClient, teamTag string, teamID int) *cron.Cron {
 	logger := zapr.NewLogger(log)
 	c := cron.New(
 		cron.WithChain(cron.DelayIfStillRunning(logger)),
 	)
-	c.AddFunc("1,11,21,31,41,51 * * * *", syncTeams(ctx, conn, log, apiClient, teamTag, teamID))
+	// c.AddFunc("1,11,21,31,41,51 * * * *", syncTeams(ctx, conn, log, apiClient, teamTag, teamID))
+	c.AddFunc("* * * * *", syncTeams(ctx, conn, log, apiClient, teamTag, teamID))
 	return c
 }
 
@@ -310,6 +320,75 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 			_, err = tx.Exec(ctx, q, newLogID, now)
 			if err != nil {
 				log.Error("unable to update team member update status", zap.Error(err))
+				return
+			}
+
+			// Check Racing Progress for raffle ticket credits...
+			q = `
+				INSERT INTO raffle_users (raffle_id, user_id, balance)
+
+				SELECT r.id AS raffle_id, ur.user_id, ur.played AS balance
+				FROM raffles r, user_records ur
+				WHERE ur.request_id = $1
+					AND r.deleted_at IS NULL
+					AND r.start_at + INTERVAL '10 minute' <= $2
+					AND r.finish_at + INTERVAL '1 minute' >= $2
+				
+				ON CONFLICT (raffle_id, user_id) DO UPDATE
+				SET balance = raffle_users.balance + EXCLUDED.balance`
+			_, err = tx.Exec(ctx, q, newLogID, now)
+			if err != nil {
+				log.Error("unable to update team member update status", zap.Error(err))
+				return
+			}
+
+			// Issue Raffle Tickets
+			processRaffleUsers := []RaffleUser{}
+			q = `SELECT raffle_id, user_id, balance FROM raffle_users WHERE balance >= $1`
+			rows, err := tx.Query(ctx, q, TicketPrice)
+			if err != nil {
+				log.Error("unable to find raffle ticket users", zap.Error(err))
+				return
+			}
+			defer rows.Close()
+			for rows.Next() {
+				user := RaffleUser{}
+				err := rows.Scan(&user.RaffleID, &user.ID, &user.Amount)
+				if err != nil {
+					log.Error("unable to check raffle ticket user's balance ", zap.Error(err))
+					return
+				}
+				user.Amount /= TicketPrice
+
+				processRaffleUsers = append(processRaffleUsers, user)
+
+			}
+
+			for _, user := range processRaffleUsers {
+				q := fmt.Sprintf(`
+					INSERT INTO raffle_ticket_users (raffle_id, user_id, code, reason)
+
+					SELECT $1 AS raffle_id, $2 AS user_id, rt.code, '25 races completed' AS reason
+					FROM raffle_tickets rt
+						LEFT JOIN raffle_ticket_users rtu ON rtu.raffle_id = $1
+							AND rtu.code = rt.code
+					WHERE rtu.user_id IS NULL
+					ORDER BY rt.code ASC
+					LIMIT %d`, user.Amount)
+				_, err = tx.Exec(ctx, q, user.RaffleID, user.ID)
+				if err != nil {
+					log.Error("unable to give raffle tickets", zap.Error(err))
+					return
+				}
+			}
+
+			q = `
+				UPDATE raffle_users
+				SET balance = balance - ($1 * (balance / $1))
+				WHERE balance >= $1`
+			_, err = tx.Exec(ctx, q, TicketPrice)
+			if err != nil {
+				log.Error("unable to update raffle user balances", zap.Error(err))
 				return
 			}
 
