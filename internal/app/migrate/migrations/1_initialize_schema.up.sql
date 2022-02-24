@@ -104,6 +104,14 @@ CREATE TABLE raffle_tickets (
 	code TEXT PRIMARY KEY
 );
 
+CREATE TABLE raffle_users (
+	raffle_id UUID NOT NULL REFERENCES raffles (id),
+	user_id UUID NOT NULL REFERENCES users (id),
+	balance INT NOT NULL DEFAULT 0,
+
+	PRIMARY KEY (raffle_id, user_id)
+);
+
 CREATE TABLE raffle_ticket_users (
 	raffle_id UUID NOT NULL REFERENCES raffles (id),
 	user_id UUID NOT NULL REFERENCES users (id),
