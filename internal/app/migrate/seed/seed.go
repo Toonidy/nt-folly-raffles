@@ -48,8 +48,9 @@ func Run(ctx context.Context, conn *pgxpool.Pool, logger *zap.Logger) error { //
 	timeFrom := time.Date(2022, 2, 23, 21, 30, 0, 0, loc)
 	timeTo := time.Date(2022, 3, 4, 21, 30, 0, 0, loc)
 
-	q := `INSERT INTO raffles (name, start_at, finish_at) VALUES ($1, $2, $3)`
-	_, err = tx.Exec(ctx, q, "Main Event", timeFrom, timeTo)
+	var raffleID string
+	q := `INSERT INTO raffles (name, start_at, finish_at) VALUES ($1, $2, $3) RETURNING id`
+	err = tx.QueryRow(ctx, q, "Main Event", timeFrom, timeTo).Scan(&raffleID)
 	if err != nil {
 		return fmt.Errorf("insert main event failed: %w", err)
 	}
@@ -60,15 +61,24 @@ func Run(ctx context.Context, conn *pgxpool.Pool, logger *zap.Logger) error { //
 		return fmt.Errorf("insert main event failed: %w", err)
 	}
 
+	// Raffle Daily Bonuses
 	dailyFrom := timeFrom
 	dailyTo := timeFrom.Add(time.Hour * 24)
 	for i := 0; i < 7; i++ {
-		_, err = tx.Exec(ctx, q, fmt.Sprintf("Raffle Bonus Day %d", i+1), dailyFrom, dailyTo)
+		var competitionID string
+		q := `INSERT INTO competitions (name, start_at, finish_at) VALUES ($1, $2, $3) RETURNING id`
+		err := tx.QueryRow(ctx, q, fmt.Sprintf("Raffle Bonus Day %d", i+1), dailyFrom, dailyTo).Scan(&competitionID)
 		if err != nil {
-			return fmt.Errorf("insert main event failed: %w", err)
+			return fmt.Errorf("insert bonus competition event failed: %w", err)
 		}
 		dailyFrom = dailyFrom.Add(time.Hour * 24)
 		dailyTo = dailyTo.Add(time.Hour * 24)
+
+		q = `INSERT INTO raffle_bonus_competitions (raffle_id, competition_id) VALUES ($1, $2)`
+		_, err = tx.Exec(ctx, q, raffleID, competitionID)
+		if err != nil {
+			return fmt.Errorf("linking bonus competition to raffles failed: %w", err)
+		}
 	}
 
 	// Commit Transaction

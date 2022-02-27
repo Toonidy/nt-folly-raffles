@@ -31,8 +31,7 @@ func NewCronService(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, ap
 	c := cron.New(
 		cron.WithChain(cron.DelayIfStillRunning(logger)),
 	)
-	// c.AddFunc("1,11,21,31,41,51 * * * *", syncTeams(ctx, conn, log, apiClient, teamTag, teamID))
-	c.AddFunc("* * * * *", syncTeams(ctx, conn, log, apiClient, teamTag, teamID))
+	c.AddFunc("1,11,21,31,41,51 * * * *", syncTeams(ctx, conn, log, apiClient, teamTag, teamID))
 	return c
 }
 
@@ -387,6 +386,34 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 				SET balance = balance - ($1 * (balance / $1))
 				WHERE balance >= $1`
 			_, err = tx.Exec(ctx, q, TicketPrice)
+			if err != nil {
+				log.Error("unable to update raffle user balances", zap.Error(err))
+				return
+			}
+
+			// Free up raffle tickets from disqualified players
+			q = `
+				DELETE
+				FROM raffle_users
+				WHERE user_id IN (
+					SELECT id
+					FROM users
+					WHERE status = 'LEFT'
+				)`
+			_, err = tx.Exec(ctx, q)
+			if err != nil {
+				log.Error("unable to update raffle user balances", zap.Error(err))
+				return
+			}
+			q = `
+				DELETE
+				FROM raffle_ticket_users
+				WHERE user_id IN (
+					SELECT id
+					FROM users
+					WHERE status = 'LEFT'
+				)`
+			_, err = tx.Exec(ctx, q)
 			if err != nil {
 				log.Error("unable to update raffle user balances", zap.Error(err))
 				return

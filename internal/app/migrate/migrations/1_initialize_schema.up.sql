@@ -100,6 +100,13 @@ CREATE TABLE raffles (
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE raffle_bonus_competitions (
+	raffle_id UUID NOT NULL REFERENCES raffles (id),
+	competition_id UUID NOT NULL REFERENCES competitions (id),
+
+	PRIMARY KEY (raffle_id, competition_id)
+);
+
 CREATE TABLE raffle_tickets (
 	code TEXT PRIMARY KEY
 );
