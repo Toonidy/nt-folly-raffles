@@ -45,8 +45,8 @@ func Run(ctx context.Context, conn *pgxpool.Pool, logger *zap.Logger) error { //
 	if err != nil {
 		return fmt.Errorf("timezone load failed: %w", err)
 	}
-	timeFrom := time.Date(2022, 2, 23, 21, 30, 0, 0, loc)
-	timeTo := time.Date(2022, 3, 4, 21, 30, 0, 0, loc)
+	timeFrom := time.Date(2022, 2, 23, 21, 31, 0, 0, loc)
+	timeTo := time.Date(2022, 3, 4, 21, 31, 0, 0, loc)
 
 	var raffleID string
 	q := `INSERT INTO raffles (name, start_at, finish_at) VALUES ($1, $2, $3) RETURNING id`

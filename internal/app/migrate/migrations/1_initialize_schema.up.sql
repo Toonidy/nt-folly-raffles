@@ -103,12 +103,14 @@ CREATE TABLE raffles (
 CREATE TABLE raffle_bonus_competitions (
 	raffle_id UUID NOT NULL REFERENCES raffles (id),
 	competition_id UUID NOT NULL REFERENCES competitions (id),
+	processed BOOL NOT NULL DEFAULT FALSE,
 
 	PRIMARY KEY (raffle_id, competition_id)
 );
 
 CREATE TABLE raffle_tickets (
-	code TEXT PRIMARY KEY
+	code TEXT PRIMARY KEY,
+	sort_index SERIAL NOT NULL
 );
 
 CREATE TABLE raffle_users (
@@ -123,11 +125,23 @@ CREATE TABLE raffle_ticket_users (
 	raffle_id UUID NOT NULL REFERENCES raffles (id),
 	user_id UUID NOT NULL REFERENCES users (id),
 	code TEXT NOT NULL REFERENCES raffle_tickets (code),
-	reason TEXT,
 
 	deleted_at TIMESTAMPTZ,
 	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
 	PRIMARY KEY (raffle_id, user_id, code)
+);
+
+CREATE TABLE raffle_ticket_logs (
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+	raffle_id UUID NOT NULL REFERENCES raffles (id),
+	user_id UUID NOT NULL REFERENCES users (id),
+	code TEXT NOT NULL REFERENCES raffle_tickets (code),
+	action_type TEXT NOT NULL CHECK (action_type IN ('GIVE', 'REVOKE')),
+	content TEXT NOT NULL,
+
+	deleted_at TIMESTAMPTZ,
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

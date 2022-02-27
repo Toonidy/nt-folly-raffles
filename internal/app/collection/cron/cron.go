@@ -17,7 +17,11 @@ import (
 	"go.uber.org/zap"
 )
 
-const TicketPrice = 5
+const (
+	TicketPrice      = 5
+	ActionTypeGive   = "GIVE"
+	ActionTypeRevoke = "REVOKE"
+)
 
 type RaffleUser struct {
 	ID       string
@@ -365,19 +369,44 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 
 			for _, user := range processRaffleUsers {
 				q := fmt.Sprintf(`
-					INSERT INTO raffle_ticket_users (raffle_id, user_id, code, reason)
+					INSERT INTO raffle_ticket_users (raffle_id, user_id, code)
 
-					SELECT $1 AS raffle_id, $2 AS user_id, rt.code, '25 races completed' AS reason
+					SELECT $1 AS raffle_id, $2 AS user_id, rt.code
 					FROM raffle_tickets rt
 						LEFT JOIN raffle_ticket_users rtu ON rtu.raffle_id = $1
 							AND rtu.code = rt.code
 					WHERE rtu.user_id IS NULL
-					ORDER BY rt.code ASC
-					LIMIT %d`, user.Amount)
-				_, err = tx.Exec(ctx, q, user.RaffleID, user.ID)
+					ORDER BY rt.sort_index ASC
+					LIMIT %d
+					RETURNING code`,
+					user.Amount,
+				)
+				ticketCodes := []string{}
+				rows, err = tx.Query(ctx, q, user.RaffleID, user.ID)
 				if err != nil {
 					log.Error("unable to give raffle tickets", zap.Error(err))
 					return
+				}
+				for rows.Next() {
+					var code string
+					err := rows.Scan(&code)
+					if err != nil {
+						log.Error("unable to track given raffle ticket", zap.Error(err))
+						return
+					}
+					ticketCodes = append(ticketCodes, code)
+				}
+				rows.Close()
+
+				for _, code := range ticketCodes {
+					q = `
+						INSERT INTO raffle_ticket_logs (raffle_id, user_id, code, action_type, content)
+						VALUES ($1, $2, $3, $4, $5)`
+					_, err = tx.Exec(ctx, q, user.RaffleID, user.ID, code, ActionTypeGive, fmt.Sprintf("Completed %d races.", TicketPrice))
+					if err != nil {
+						log.Error("unable to log raffle tickets", zap.Error(err))
+						return
+					}
 				}
 			}
 
@@ -391,10 +420,21 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 				return
 			}
 
-			// Free up raffle tickets from disqualified players
+			// Free up raffle tickets after disqualifying players
+			q = `
+				INSERT INTO raffle_ticket_logs (raffle_id, user_id, code, action_type, content)
+				SELECT rtu.raffle_id, rtu.user_id, rtu.code, $1 AS action_type, 'Player Left team' AS content
+				FROM raffle_ticket_users rtu
+					INNER JOIN users u ON u.id = rtu.user_id
+				WHERE u.status = 'LEFT'`
+			_, err = tx.Exec(ctx, q, ActionTypeRevoke)
+			if err != nil {
+				log.Error("unable to log upcoming revoked raffle tickets", zap.Error(err))
+				return
+			}
 			q = `
 				DELETE
-				FROM raffle_users
+				FROM raffle_ticket_users
 				WHERE user_id IN (
 					SELECT id
 					FROM users
@@ -407,7 +447,7 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 			}
 			q = `
 				DELETE
-				FROM raffle_ticket_users
+				FROM raffle_users
 				WHERE user_id IN (
 					SELECT id
 					FROM users
