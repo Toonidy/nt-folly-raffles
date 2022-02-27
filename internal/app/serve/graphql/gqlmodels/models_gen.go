@@ -26,6 +26,11 @@ type RaffleTicketLog struct {
 	Content    string     `json:"content"`
 }
 
+type RaffleTicketStat struct {
+	Available int `json:"available"`
+	Sold      int `json:"sold"`
+}
+
 type User struct {
 	ID             string             `json:"id"`
 	Username       string             `json:"username"`

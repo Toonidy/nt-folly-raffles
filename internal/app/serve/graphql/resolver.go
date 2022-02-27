@@ -86,6 +86,31 @@ func (r *queryResolver) Competition(ctx context.Context, id string) (*gqlmodels.
 	return output, nil
 }
 
+// RaffleTicketStats is a query resolver that counts number of tickets sold or available.
+func (r *queryResolver) RaffleTicketStats(ctx context.Context, id string) (*gqlmodels.RaffleTicketStat, error) {
+	if id == "" {
+		return nil, &gqlerror.Error{
+			Path:    graphql.GetPath(ctx),
+			Message: "Raffle ID is required.",
+			Extensions: map[string]interface{}{
+				"code": "REQUIRED",
+			},
+		}
+	}
+	output := &gqlmodels.RaffleTicketStat{}
+	q := `
+		SELECT count(DISTINCT CASE WHEN rtu.user_id IS NOT NULL THEN rt.code END) AS sold,
+			count(DISTINCT CASE WHEN rtu.user_id IS NULL THEN rt.code END) AS available
+		from raffle_tickets rt
+			LEFT JOIN raffle_ticket_users rtu ON rt.code = rtu.code 
+				AND rtu.raffle_id = $1`
+	err := r.Conn.QueryRow(ctx, q, id).Scan(&output.Sold, &output.Available)
+	if err != nil {
+		return nil, fmt.Errorf("querying raffle ticket count failed: %w", err)
+	}
+	return output, nil
+}
+
 // RaffleLogs is a query resolver that fetches all the raffle logs.
 func (r *queryResolver) RaffleLogs(ctx context.Context, id string, includeRevoke *bool) ([]*gqlmodels.RaffleTicketLog, error) {
 	if id == "" {

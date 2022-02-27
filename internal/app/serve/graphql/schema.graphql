@@ -38,6 +38,11 @@ type RaffleTicketLog {
 	content: String!
 }
 
+type RaffleTicketStat {
+	available: Int!
+	sold: Int!
+}
+
 type Competition {
 	id: ID!
 	name: String!
@@ -48,5 +53,6 @@ type Competition {
 
 type Query {
 	competition(id: ID!): Competition!
+	raffleTicketStats(id: ID!): RaffleTicketStat!
 	raffleLogs(id: ID!, includeRevoke: Boolean): [RaffleTicketLog!]!
 }

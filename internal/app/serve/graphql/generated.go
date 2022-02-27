@@ -53,8 +53,9 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Competition func(childComplexity int, id string) int
-		RaffleLogs  func(childComplexity int, id string, includeRevoke *bool) int
+		Competition       func(childComplexity int, id string) int
+		RaffleLogs        func(childComplexity int, id string, includeRevoke *bool) int
+		RaffleTicketStats func(childComplexity int, id string) int
 	}
 
 	RaffleTicketLog struct {
@@ -64,6 +65,11 @@ type ComplexityRoot struct {
 		ID         func(childComplexity int) int
 		RaffleID   func(childComplexity int) int
 		UserID     func(childComplexity int) int
+	}
+
+	RaffleTicketStat struct {
+		Available func(childComplexity int) int
+		Sold      func(childComplexity int) int
 	}
 
 	User struct {
@@ -82,6 +88,7 @@ type ComplexityRoot struct {
 
 type QueryResolver interface {
 	Competition(ctx context.Context, id string) (*gqlmodels.Competition, error)
+	RaffleTicketStats(ctx context.Context, id string) (*gqlmodels.RaffleTicketStat, error)
 	RaffleLogs(ctx context.Context, id string, includeRevoke *bool) ([]*gqlmodels.RaffleTicketLog, error)
 }
 type UserResolver interface {
@@ -162,6 +169,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.RaffleLogs(childComplexity, args["id"].(string), args["includeRevoke"].(*bool)), true
 
+	case "Query.raffleTicketStats":
+		if e.complexity.Query.RaffleTicketStats == nil {
+			break
+		}
+
+		args, err := ec.field_Query_raffleTicketStats_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.RaffleTicketStats(childComplexity, args["id"].(string)), true
+
 	case "RaffleTicketLog.actionType":
 		if e.complexity.RaffleTicketLog.ActionType == nil {
 			break
@@ -203,6 +222,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RaffleTicketLog.UserID(childComplexity), true
+
+	case "RaffleTicketStat.available":
+		if e.complexity.RaffleTicketStat.Available == nil {
+			break
+		}
+
+		return e.complexity.RaffleTicketStat.Available(childComplexity), true
+
+	case "RaffleTicketStat.sold":
+		if e.complexity.RaffleTicketStat.Sold == nil {
+			break
+		}
+
+		return e.complexity.RaffleTicketStat.Sold(childComplexity), true
 
 	case "User.createdAt":
 		if e.complexity.User.CreatedAt == nil {
@@ -369,6 +402,11 @@ type RaffleTicketLog {
 	content: String!
 }
 
+type RaffleTicketStat {
+	available: Int!
+	sold: Int!
+}
+
 type Competition {
 	id: ID!
 	name: String!
@@ -379,6 +417,7 @@ type Competition {
 
 type Query {
 	competition(id: ID!): Competition!
+	raffleTicketStats(id: ID!): RaffleTicketStat!
 	raffleLogs(id: ID!, includeRevoke: Boolean): [RaffleTicketLog!]!
 }
 `, BuiltIn: false},
@@ -440,6 +479,21 @@ func (ec *executionContext) field_Query_raffleLogs_args(ctx context.Context, raw
 		}
 	}
 	args["includeRevoke"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_raffleTicketStats_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -711,6 +765,48 @@ func (ec *executionContext) _Query_competition(ctx context.Context, field graphq
 	res := resTmp.(*gqlmodels.Competition)
 	fc.Result = res
 	return ec.marshalNCompetition2ᚖntᚑfollyᚑxmaxxᚑcompᚋinternalᚋappᚋserveᚋgraphqlᚋgqlmodelsᚐCompetition(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_raffleTicketStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_raffleTicketStats_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().RaffleTicketStats(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodels.RaffleTicketStat)
+	fc.Result = res
+	return ec.marshalNRaffleTicketStat2ᚖntᚑfollyᚑxmaxxᚑcompᚋinternalᚋappᚋserveᚋgraphqlᚋgqlmodelsᚐRaffleTicketStat(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_raffleLogs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1034,6 +1130,76 @@ func (ec *executionContext) _RaffleTicketLog_content(ctx context.Context, field 
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RaffleTicketStat_available(ctx context.Context, field graphql.CollectedField, obj *gqlmodels.RaffleTicketStat) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RaffleTicketStat",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Available, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RaffleTicketStat_sold(ctx context.Context, field graphql.CollectedField, obj *gqlmodels.RaffleTicketStat) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RaffleTicketStat",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Sold, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodels.User) (ret graphql.Marshaler) {
@@ -2599,6 +2765,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "raffleTicketStats":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_raffleTicketStats(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "raffleLogs":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -2666,6 +2846,38 @@ func (ec *executionContext) _RaffleTicketLog(ctx context.Context, sel ast.Select
 			}
 		case "content":
 			out.Values[i] = ec._RaffleTicketLog_content(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var raffleTicketStatImplementors = []string{"RaffleTicketStat"}
+
+func (ec *executionContext) _RaffleTicketStat(ctx context.Context, sel ast.SelectionSet, obj *gqlmodels.RaffleTicketStat) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, raffleTicketStatImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RaffleTicketStat")
+		case "available":
+			out.Values[i] = ec._RaffleTicketStat_available(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "sold":
+			out.Values[i] = ec._RaffleTicketStat_sold(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -3142,6 +3354,20 @@ func (ec *executionContext) marshalNRaffleTicketLog2ᚖntᚑfollyᚑxmaxxᚑcomp
 		return graphql.Null
 	}
 	return ec._RaffleTicketLog(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRaffleTicketStat2ntᚑfollyᚑxmaxxᚑcompᚋinternalᚋappᚋserveᚋgraphqlᚋgqlmodelsᚐRaffleTicketStat(ctx context.Context, sel ast.SelectionSet, v gqlmodels.RaffleTicketStat) graphql.Marshaler {
+	return ec._RaffleTicketStat(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRaffleTicketStat2ᚖntᚑfollyᚑxmaxxᚑcompᚋinternalᚋappᚋserveᚋgraphqlᚋgqlmodelsᚐRaffleTicketStat(ctx context.Context, sel ast.SelectionSet, v *gqlmodels.RaffleTicketStat) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._RaffleTicketStat(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {

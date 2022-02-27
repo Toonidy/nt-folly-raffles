@@ -20,4 +20,4 @@ RUN apt-get update && apt-get install google-chrome-beta -y
 
 # Execute Main Server
 USER follyteam
-CMD ["./main", "service"]
+CMD ./main service
