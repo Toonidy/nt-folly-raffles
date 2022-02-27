@@ -1,7 +1,7 @@
 # Build Go API Server
-FROM golang:1.16-alpine AS go_builder
+FROM golang:1.17-buster AS go_builder
 RUN go version
-ARG CAPROVER_GIT_COMMIT_SHA
+ARG BUILD_VERSION
 ADD . /app
 WORKDIR /app
 RUN go build -ldflags="-X 'follyteam/build.Version=1.0.0' -X 'follyteam/build.BuildHash=$CAPROVER_GIT_COMMIT_SHA'" -o /main ./cmd/collection/main.go
@@ -10,7 +10,7 @@ RUN go build -ldflags="-X 'follyteam/build.Version=1.0.0' -X 'follyteam/build.Bu
 # that we will deploy to production
 FROM debian:bullseye
 
-RUN useradd -m follyteam
+RUN useradd -m ntbootstrap
 COPY --from=go_builder /main ./
 
 RUN apt-get update && apt-get -y install wget gnupg
@@ -19,5 +19,5 @@ RUN wget -O- https://dl.google.com/linux/linux_signing_key.pub |gpg --dearmor > 
 RUN apt-get update && apt-get install google-chrome-beta -y
 
 # Execute Main Server
-USER follyteam
-CMD ./main service
+USER ntbootstrap
+CMD ./main serve
