@@ -1,0 +1,25 @@
+# Build Go API Server
+FROM golang:1.16-alpine AS go_builder
+RUN go version
+ARG CAPROVER_GIT_COMMIT_SHA
+ADD . /app
+WORKDIR /app
+RUN go build -ldflags="-X 'follyteam/build.Version=1.0.0' -X 'follyteam/build.BuildHash=$CAPROVER_GIT_COMMIT_SHA'" -o /main ./cmd/collection/main.go
+
+# Final stage build, this will be the container
+# that we will deploy to production
+FROM debian:buster
+
+RUN useradd follyteam
+COPY --from=go_builder /main ./
+
+RUN apt-get update; apt-get clean
+RUN apt-get update && apt-get -y install wget
+RUN wget --quiet https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+RUN apt install -y ./google-chrome-stable_current_amd64.deb
+RUN chown root:root /opt/google/chrome/chrome-sandbox
+RUN chmod 4755 /opt/google/chrome/chrome-sandbox
+
+# Execute Main Server
+USER follyteam
+CMD ./main service

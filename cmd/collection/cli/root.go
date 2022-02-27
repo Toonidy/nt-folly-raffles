@@ -32,7 +32,7 @@ func Execute() {
 
 func init() {
 	// Define Default Configuration
-	rootCmd.PersistentFlags().String("browser_user_agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36", "browser user agent used for the data scraper")
+	rootCmd.PersistentFlags().String("browser_user_agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36", "browser user agent used for the data scraper")
 	rootCmd.PersistentFlags().String("team_tag", "FOLLY", "team tag to track stats")
 	rootCmd.PersistentFlags().Int("team_id", 1411729, "nitro type team id to cross check stats against")
 
