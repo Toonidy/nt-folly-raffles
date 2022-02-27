@@ -18,15 +18,31 @@ import (
 )
 
 const (
-	TicketPrice      = 5
-	ActionTypeGive   = "GIVE"
-	ActionTypeRevoke = "REVOKE"
+	TicketPrice      int    = 5
+	BonusMostRaces   int    = 10
+	Bonus97Accuracy  int    = 1
+	Bonus98Accuracy  int    = 3
+	Bonus99Accuracy  int    = 5
+	ActionTypeGive   string = "GIVE"
+	ActionTypeRevoke string = "REVOKE"
 )
 
 type RaffleUser struct {
 	ID       string
 	RaffleID string
 	Amount   int
+}
+
+type RaffleBonusCompetition struct {
+	RaffleID      string
+	CompetitionID string
+}
+
+type UserStat struct {
+	UserID   string
+	Races    int
+	Accuracy float64
+	Speed    float64
 }
 
 // NewCronService creates a new cron service ready to be activated
@@ -345,81 +361,6 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 				return
 			}
 
-			// Issue Raffle Tickets
-			processRaffleUsers := []RaffleUser{}
-			q = `SELECT raffle_id, user_id, balance FROM raffle_users WHERE balance >= $1`
-			rows, err := tx.Query(ctx, q, TicketPrice)
-			if err != nil {
-				log.Error("unable to find raffle ticket users", zap.Error(err))
-				return
-			}
-			defer rows.Close()
-			for rows.Next() {
-				user := RaffleUser{}
-				err := rows.Scan(&user.RaffleID, &user.ID, &user.Amount)
-				if err != nil {
-					log.Error("unable to check raffle ticket user's balance ", zap.Error(err))
-					return
-				}
-				user.Amount /= TicketPrice
-
-				processRaffleUsers = append(processRaffleUsers, user)
-
-			}
-
-			for _, user := range processRaffleUsers {
-				q := fmt.Sprintf(`
-					INSERT INTO raffle_ticket_users (raffle_id, user_id, code)
-
-					SELECT $1 AS raffle_id, $2 AS user_id, rt.code
-					FROM raffle_tickets rt
-						LEFT JOIN raffle_ticket_users rtu ON rtu.raffle_id = $1
-							AND rtu.code = rt.code
-					WHERE rtu.user_id IS NULL
-					ORDER BY rt.sort_index ASC
-					LIMIT %d
-					RETURNING code`,
-					user.Amount,
-				)
-				ticketCodes := []string{}
-				rows, err = tx.Query(ctx, q, user.RaffleID, user.ID)
-				if err != nil {
-					log.Error("unable to give raffle tickets", zap.Error(err))
-					return
-				}
-				for rows.Next() {
-					var code string
-					err := rows.Scan(&code)
-					if err != nil {
-						log.Error("unable to track given raffle ticket", zap.Error(err))
-						return
-					}
-					ticketCodes = append(ticketCodes, code)
-				}
-				rows.Close()
-
-				for _, code := range ticketCodes {
-					q = `
-						INSERT INTO raffle_ticket_logs (raffle_id, user_id, code, action_type, content)
-						VALUES ($1, $2, $3, $4, $5)`
-					_, err = tx.Exec(ctx, q, user.RaffleID, user.ID, code, ActionTypeGive, fmt.Sprintf("Completed %d races.", TicketPrice))
-					if err != nil {
-						log.Error("unable to log raffle tickets", zap.Error(err))
-						return
-					}
-				}
-			}
-
-			q = `
-				UPDATE raffle_users
-				SET balance = balance - ($1 * (balance / $1))
-				WHERE balance >= $1`
-			_, err = tx.Exec(ctx, q, TicketPrice)
-			if err != nil {
-				log.Error("unable to update raffle user balances", zap.Error(err))
-				return
-			}
-
 			// Free up raffle tickets after disqualifying players
 			q = `
 				INSERT INTO raffle_ticket_logs (raffle_id, user_id, code, action_type, content)
@@ -459,6 +400,166 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 				return
 			}
 
+			// Issue Raffle Tickets
+			processRaffleUsers := []RaffleUser{}
+			q = `SELECT raffle_id, user_id, balance FROM raffle_users WHERE balance >= $1`
+			rows, err := tx.Query(ctx, q, TicketPrice)
+			if err != nil {
+				log.Error("unable to find raffle ticket users", zap.Error(err))
+				return
+			}
+			defer rows.Close()
+			for rows.Next() {
+				user := RaffleUser{}
+				err := rows.Scan(&user.RaffleID, &user.ID, &user.Amount)
+				if err != nil {
+					log.Error("unable to check raffle ticket user's balance ", zap.Error(err))
+					return
+				}
+				user.Amount /= TicketPrice
+
+				processRaffleUsers = append(processRaffleUsers, user)
+
+			}
+
+			for _, user := range processRaffleUsers {
+				err := giveTickets(ctx, tx, user.RaffleID, user.ID, user.Amount, fmt.Sprintf("Completed %d races.", TicketPrice))
+				if err != nil {
+					log.Error("unable to give raffle tickets", zap.Error(err))
+					return
+				}
+			}
+
+			q = `
+				UPDATE raffle_users
+				SET balance = balance - ($1 * (balance / $1))
+				WHERE balance >= $1`
+			_, err = tx.Exec(ctx, q, TicketPrice)
+			if err != nil {
+				log.Error("unable to update raffle user balances", zap.Error(err))
+				return
+			}
+
+			// Issue Bonus Tickets
+			bonusRaffleCompetitions := []RaffleBonusCompetition{}
+			q = `
+				SELECT rbc.raffle_id, rbc.competition_id
+				FROM raffle_bonus_competitions rbc
+					INNER JOIN competitions c ON c.id = rbc.competition_id
+				WHERE c.finish_at <= NOW()
+					AND rbc.processed = false`
+			rows, err = tx.Query(ctx, q)
+			if err != nil {
+				log.Error("unable to select bonus raffle competitions", zap.Error(err))
+				return
+			}
+			defer rows.Close()
+			for rows.Next() {
+				item := RaffleBonusCompetition{}
+				err := rows.Scan(&item.RaffleID, &item.CompetitionID)
+				if err != nil {
+					log.Error("unable to fetch bonus raffle competition", zap.Error(err))
+					return
+				}
+				bonusRaffleCompetitions = append(bonusRaffleCompetitions, item)
+			}
+			rows.Close()
+			for _, bonusComp := range bonusRaffleCompetitions {
+				highestRaces := 0
+				mostRaces := []string{}
+				accuracy97Users := []string{}
+				accuracy98Users := []string{}
+				accuracy99Users := []string{}
+
+				// Gather user stats regarding comp
+				q := `
+					SELECT u.id, 
+						sum(ur.played) AS races,
+						((1 - (sum(ur.errs) / sum(ur.typed::decimal))) * 100) AS accuracy,
+						((sum(typed) / 5.0 / (sum(secs) / 60.0))) AS speed
+					FROM users u
+						INNER JOIN user_records ur on ur.user_id = u.id 
+						INNER JOIN competitions_to_user_records c2ur on c2ur.user_record_id = ur.id AND
+							c2ur.competition_id = $1
+					WHERE u.status != 'LEFT'
+					GROUP BY u.id
+					HAVING sum(ur.played) >= 25`
+				rows, err := tx.Query(ctx, q, bonusComp.CompetitionID)
+				if err != nil {
+					log.Error("unable to grab user stats", zap.Error(err))
+					return
+				}
+				defer rows.Close()
+				for rows.Next() {
+					item := UserStat{}
+					err := rows.Scan(&item.UserID, &item.Races, &item.Accuracy, &item.Speed)
+					if err != nil {
+						log.Error("unable to grab user stats", zap.Error(err))
+						return
+					}
+
+					// Bonus Tickets: Most Races
+					if item.Races > highestRaces {
+						highestRaces = item.Races
+						mostRaces = []string{item.UserID}
+					} else if item.Races == highestRaces {
+						mostRaces = append(mostRaces, item.UserID)
+					}
+
+					// Bonus Tickets: Accuracy
+					if item.Accuracy >= 99.00 {
+						accuracy99Users = append(accuracy99Users, item.UserID)
+					} else if item.Accuracy >= 98.00 {
+						accuracy98Users = append(accuracy98Users, item.UserID)
+					} else if item.Accuracy >= 97.00 {
+						accuracy97Users = append(accuracy97Users, item.UserID)
+					}
+
+				}
+				rows.Close()
+
+				// Distribute Bonus Tickets
+				for _, userID := range mostRaces {
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, BonusMostRaces, fmt.Sprintf("Bonus: Most races (%d races)", highestRaces))
+					if err != nil {
+						log.Error("unable to give raffle tickets", zap.Error(err))
+						return
+					}
+				}
+				for _, userID := range accuracy97Users {
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus97Accuracy, fmt.Sprintf("Bonus: Accuracy 97%% (%d tickets)", Bonus97Accuracy))
+					if err != nil {
+						log.Error("unable to give raffle tickets", zap.Error(err))
+						return
+					}
+				}
+				for _, userID := range accuracy98Users {
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus98Accuracy, fmt.Sprintf("Bonus: Accuracy 98%% (%d tickets)", Bonus98Accuracy))
+					if err != nil {
+						log.Error("unable to give raffle tickets", zap.Error(err))
+						return
+					}
+				}
+				for _, userID := range accuracy99Users {
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus99Accuracy, fmt.Sprintf("Bonus: Accuracy 99%% (%d tickets)", Bonus99Accuracy))
+					if err != nil {
+						log.Error("unable to give raffle tickets", zap.Error(err))
+						return
+					}
+				}
+
+				// Mark as completed
+				q = `
+					UPDATE raffle_bonus_competitions
+					SET processed = true
+					WHERE raffle_id = $1 AND competition_id = $2`
+				_, err = tx.Exec(ctx, q, bonusComp.RaffleID, bonusComp.CompetitionID)
+				if err != nil {
+					log.Error("unable to mark bonus raffle competition as completed", zap.Error(err))
+					return
+				}
+			}
+
 			// Commit Transaction
 			err = tx.Commit(ctx)
 			if err != nil {
@@ -469,4 +570,45 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 
 		log.Info("sync teams completed")
 	}
+}
+
+// giveTickets records raffle ticket distribution to a user (if available).
+func giveTickets(ctx context.Context, tx pgx.Tx, raffleID string, userID string, amount int, reason string) error {
+	q := fmt.Sprintf(`
+		INSERT INTO raffle_ticket_users (raffle_id, user_id, code)
+
+		SELECT $1 AS raffle_id, $2 AS user_id, rt.code
+		FROM raffle_tickets rt
+			LEFT JOIN raffle_ticket_users rtu ON rtu.raffle_id = $1
+				AND rtu.code = rt.code
+		WHERE rtu.user_id IS NULL
+		ORDER BY rt.sort_index ASC
+		LIMIT %d
+
+		RETURNING code`, amount)
+	ticketCodes := []string{}
+	rows, err := tx.Query(ctx, q, raffleID, userID)
+	if err != nil {
+		return fmt.Errorf("unable to give raffle tickets: %w", err)
+	}
+	for rows.Next() {
+		var code string
+		err := rows.Scan(&code)
+		if err != nil {
+			return fmt.Errorf("unable to track given raffle ticket: %w", err)
+		}
+		ticketCodes = append(ticketCodes, code)
+	}
+	rows.Close()
+
+	for _, code := range ticketCodes {
+		q = `
+			INSERT INTO raffle_ticket_logs (raffle_id, user_id, code, action_type, content)
+			VALUES ($1, $2, $3, $4, $5)`
+		_, err = tx.Exec(ctx, q, raffleID, userID, code, ActionTypeGive, reason)
+		if err != nil {
+			return fmt.Errorf("unable to log raffle tickets: %w", err)
+		}
+	}
+	return nil
 }

@@ -113,6 +113,18 @@ CREATE TABLE raffle_tickets (
 	sort_index SERIAL NOT NULL
 );
 
+CREATE TABLE raffle_prizes (
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+	raffle_id UUID NOT NULL REFERENCES raffles (id),
+	prize INT NOT NULL,
+	drawn_code TEXT REFERENCES raffle_tickets (code),
+	sort_index SERIAL,
+
+	deleted_at TIMESTAMPTZ,
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE raffle_users (
 	raffle_id UUID NOT NULL REFERENCES raffles (id),
 	user_id UUID NOT NULL REFERENCES users (id),

@@ -81,6 +81,15 @@ func Run(ctx context.Context, conn *pgxpool.Pool, logger *zap.Logger) error { //
 		}
 	}
 
+	// Raffle Prizes
+	for i := 1; i <= 10; i++ {
+		q := `INSERT INTO raffle_prizes (raffle_id, prize) VALUES ($1, $2)`
+		_, err := tx.Exec(ctx, q, raffleID, 10000000)
+		if err != nil {
+			return fmt.Errorf("insert raffle prize %d failed: %w", i, err)
+		}
+	}
+
 	// Commit Transaction
 	err = tx.Commit(ctx)
 	if err != nil {
