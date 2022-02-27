@@ -8,4 +8,9 @@ model:
 resolver:
   filename: ./internal/app/serve/graphql/resolver.go
   type: Resolver
+models:
+  User:
+    fields:
+      raffleTickets:
+        resolver: true
 autobind: []

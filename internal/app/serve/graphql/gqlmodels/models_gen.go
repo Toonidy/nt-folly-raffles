@@ -17,16 +17,67 @@ type Competition struct {
 	Users    []*User   `json:"users"`
 }
 
+type RaffleTicketLog struct {
+	ID         string     `json:"id"`
+	RaffleID   string     `json:"raffleID"`
+	UserID     string     `json:"userID"`
+	Code       string     `json:"code"`
+	ActionType ActionType `json:"actionType"`
+	Content    string     `json:"content"`
+}
+
 type User struct {
-	ID             string         `json:"id"`
-	Username       string         `json:"username"`
-	DisplayName    string         `json:"displayName"`
-	MembershipType MembershipType `json:"membershipType"`
-	Status         UserStatus     `json:"status"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	UpdatedAt      time.Time      `json:"updatedAt"`
-	Races          int            `json:"races"`
-	Points         int            `json:"points"`
+	ID             string             `json:"id"`
+	Username       string             `json:"username"`
+	DisplayName    string             `json:"displayName"`
+	MembershipType MembershipType     `json:"membershipType"`
+	Status         UserStatus         `json:"status"`
+	CreatedAt      time.Time          `json:"createdAt"`
+	UpdatedAt      time.Time          `json:"updatedAt"`
+	Races          int                `json:"races"`
+	Points         int                `json:"points"`
+	RaffleTickets  []*RaffleTicketLog `json:"raffleTickets"`
+}
+
+type ActionType string
+
+const (
+	ActionTypeGive   ActionType = "GIVE"
+	ActionTypeRevoke ActionType = "REVOKE"
+)
+
+var AllActionType = []ActionType{
+	ActionTypeGive,
+	ActionTypeRevoke,
+}
+
+func (e ActionType) IsValid() bool {
+	switch e {
+	case ActionTypeGive, ActionTypeRevoke:
+		return true
+	}
+	return false
+}
+
+func (e ActionType) String() string {
+	return string(e)
+}
+
+func (e *ActionType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ActionType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ActionType", str)
+	}
+	return nil
+}
+
+func (e ActionType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 type MembershipType string

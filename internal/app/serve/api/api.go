@@ -5,6 +5,7 @@ import (
 	b64 "encoding/base64"
 	"fmt"
 	"net/http"
+	"nt-folly-xmaxx-comp/internal/app/serve/dataloaders"
 	"nt-folly-xmaxx-comp/internal/app/serve/graphql"
 	"time"
 
@@ -32,6 +33,7 @@ func NewAPIService(conn *pgxpool.Pool, log *zap.Logger, corsOptions *cors.Option
 	r.Use(middleware.RealIP)
 	r.Use(corsMiddleware)
 	r.Use(httprate.LimitByIP(100, 1*time.Minute))
+	r.Use(dataloaders.Middleware(conn))
 
 	gqlServer := handler.NewDefaultServer(
 		graphql.NewExecutableSchema(

@@ -11,6 +11,11 @@ enum MembershipType {
 	GOLD
 }
 
+enum ActionType {
+	GIVE
+	REVOKE
+}
+
 type User {
 	id: ID!
 	username: String!
@@ -21,6 +26,16 @@ type User {
 	updatedAt: Time!
 	races: Int!
 	points: Int!
+	raffleTickets(id: ID!): [RaffleTicketLog!]!
+}
+
+type RaffleTicketLog {
+	id: ID!
+	raffleID: String!
+	userID: String!
+	code: String!
+	actionType: ActionType!
+	content: String!
 }
 
 type Competition {
@@ -33,4 +48,5 @@ type Competition {
 
 type Query {
 	competition(id: ID!): Competition!
+	raffleLogs(id: ID!, includeRevoke: Boolean): [RaffleTicketLog!]!
 }

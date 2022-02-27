@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"nt-folly-xmaxx-comp/internal/app/serve/dataloaders"
 	"nt-folly-xmaxx-comp/internal/app/serve/graphql/gqlmodels"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -81,6 +82,68 @@ func (r *queryResolver) Competition(ctx context.Context, id string) (*gqlmodels.
 			return nil, fmt.Errorf("unable to scan user row: %w", err)
 		}
 		output.Users = append(output.Users, user)
+	}
+	return output, nil
+}
+
+// RaffleLogs is a query resolver that fetches all the raffle logs.
+func (r *queryResolver) RaffleLogs(ctx context.Context, id string, includeRevoke *bool) ([]*gqlmodels.RaffleTicketLog, error) {
+	if id == "" {
+		return nil, &gqlerror.Error{
+			Path:    graphql.GetPath(ctx),
+			Message: "Raffle ID is required.",
+			Extensions: map[string]interface{}{
+				"code": "REQUIRED",
+			},
+		}
+	}
+	q := `
+		SELECT rtl.ID, rtl.raffle_id, rtl.user_id, rtl.code, rtl.action_type, rtl.content
+		FROM raffle_ticket_logs rtl
+		WHERE rtl.raffle_id = $1`
+	if includeRevoke != nil && *includeRevoke {
+		q += ` AND rtl.action_type != 'REVOKE'`
+	}
+	rows, err := r.Conn.Query(ctx, q, id)
+	if err != nil {
+		return nil, fmt.Errorf("query raffle logs failed: %w", err)
+	}
+
+	output := []*gqlmodels.RaffleTicketLog{}
+	for rows.Next() {
+		item := &gqlmodels.RaffleTicketLog{}
+		err := rows.Scan(&item.ID, &item.RaffleID, &item.UserID, &item.Code, &item.ActionType, &item.Content)
+		if err != nil {
+			return nil, fmt.Errorf("fetching raffle logs failed: %w", err)
+		}
+		output = append(output, item)
+	}
+	return output, nil
+}
+
+//////////////////
+//  Type: User  //
+//////////////////
+
+type userResolver struct{ *Resolver }
+
+func (r *Resolver) User() UserResolver {
+	return &userResolver{r}
+}
+
+// RaffleTickets is a user query resolver that reveals all of the user's raffle tickets.
+func (r *userResolver) RaffleTickets(ctx context.Context, obj *gqlmodels.User, id string) ([]*gqlmodels.RaffleTicketLog, error) {
+	dl := dataloaders.GetLoadersFromContext(ctx)
+	if dl == nil || dl.RaffleTicketLogsByUserID == nil {
+		return nil, fmt.Errorf("unable to find dataloader for user raffle tickets")
+	}
+	key := dataloaders.IDRaffleUserKey{
+		UserID:   obj.ID,
+		RaffleID: id,
+	}
+	output, err := dl.RaffleTicketLogsByUserID.Load(key)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load user's raffle tickets")
 	}
 	return output, nil
 }
