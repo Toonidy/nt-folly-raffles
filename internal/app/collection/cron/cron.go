@@ -20,9 +20,9 @@ import (
 const (
 	TicketPrice      int    = 5
 	BonusMostRaces   int    = 10
-	Bonus97Accuracy  int    = 1
-	Bonus98Accuracy  int    = 3
-	Bonus99Accuracy  int    = 5
+	Bonus97Accuracy  int    = 5
+	Bonus98Accuracy  int    = 7
+	Bonus99Accuracy  int    = 10
 	ActionTypeGive   string = "GIVE"
 	ActionTypeRevoke string = "REVOKE"
 )
