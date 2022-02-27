@@ -20,4 +20,4 @@ RUN apt-get update && apt-get install google-chrome-beta -y
 
 # Execute Main Server
 USER ntbootstrap
-CMD ./main serve
+CMD ./main service
