@@ -18,12 +18,15 @@ type Competition struct {
 }
 
 type RaffleTicketLog struct {
-	ID         string     `json:"id"`
-	RaffleID   string     `json:"raffleID"`
-	UserID     string     `json:"userID"`
-	Code       string     `json:"code"`
-	ActionType ActionType `json:"actionType"`
-	Content    string     `json:"content"`
+	ID          string     `json:"id"`
+	RaffleID    string     `json:"raffleID"`
+	UserID      string     `json:"userID"`
+	Username    string     `json:"username"`
+	DisplayName string     `json:"displayName"`
+	Code        string     `json:"code"`
+	ActionType  ActionType `json:"actionType"`
+	Content     string     `json:"content"`
+	CreatedAt   time.Time  `json:"createdAt"`
 }
 
 type RaffleTicketStat struct {

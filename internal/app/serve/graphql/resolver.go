@@ -123,8 +123,9 @@ func (r *queryResolver) RaffleLogs(ctx context.Context, id string, includeRevoke
 		}
 	}
 	q := `
-		SELECT rtl.ID, rtl.raffle_id, rtl.user_id, rtl.code, rtl.action_type, rtl.content
+		SELECT rtl.ID, rtl.raffle_id, rtl.user_id, u.username, u.display_name, rtl.code, rtl.action_type, rtl.content, rtl.created_at
 		FROM raffle_ticket_logs rtl
+			INNER JOIN users u ON u.id = rtl.user_id
 		WHERE rtl.raffle_id = $1`
 	if includeRevoke != nil && *includeRevoke {
 		q += ` AND rtl.action_type != 'REVOKE'`
@@ -137,7 +138,7 @@ func (r *queryResolver) RaffleLogs(ctx context.Context, id string, includeRevoke
 	output := []*gqlmodels.RaffleTicketLog{}
 	for rows.Next() {
 		item := &gqlmodels.RaffleTicketLog{}
-		err := rows.Scan(&item.ID, &item.RaffleID, &item.UserID, &item.Code, &item.ActionType, &item.Content)
+		err := rows.Scan(&item.ID, &item.RaffleID, &item.UserID, &item.Username, &item.DisplayName, &item.Code, &item.ActionType, &item.Content, &item.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("fetching raffle logs failed: %w", err)
 		}

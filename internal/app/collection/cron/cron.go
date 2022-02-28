@@ -350,10 +350,12 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 
 				SELECT r.id AS raffle_id, ur.user_id, ur.played AS balance
 				FROM raffles r, user_records ur
+					LEFT JOIN users u ON u.id = ur.user_id
 				WHERE ur.request_id = $1
 					AND r.deleted_at IS NULL
 					AND r.start_at + INTERVAL '10 minute' <= $2
 					AND r.finish_at + INTERVAL '1 minute' >= $2
+					AND u.username NOT IN ('follycakes', 'toonidy')
 				
 				ON CONFLICT (raffle_id, user_id) DO UPDATE
 				SET balance = raffle_users.balance + EXCLUDED.balance`
@@ -485,6 +487,7 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 						INNER JOIN competitions_to_user_records c2ur on c2ur.user_record_id = ur.id AND
 							c2ur.competition_id = $1
 					WHERE u.status != 'LEFT'
+						AND u.username NOT IN ('follycakes', 'toonidy')
 					GROUP BY u.id
 					HAVING sum(ur.played) >= 25`
 				rows, err := tx.Query(ctx, q, bonusComp.CompetitionID)

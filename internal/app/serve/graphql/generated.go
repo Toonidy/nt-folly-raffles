@@ -59,12 +59,15 @@ type ComplexityRoot struct {
 	}
 
 	RaffleTicketLog struct {
-		ActionType func(childComplexity int) int
-		Code       func(childComplexity int) int
-		Content    func(childComplexity int) int
-		ID         func(childComplexity int) int
-		RaffleID   func(childComplexity int) int
-		UserID     func(childComplexity int) int
+		ActionType  func(childComplexity int) int
+		Code        func(childComplexity int) int
+		Content     func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		DisplayName func(childComplexity int) int
+		ID          func(childComplexity int) int
+		RaffleID    func(childComplexity int) int
+		UserID      func(childComplexity int) int
+		Username    func(childComplexity int) int
 	}
 
 	RaffleTicketStat struct {
@@ -202,6 +205,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RaffleTicketLog.Content(childComplexity), true
 
+	case "RaffleTicketLog.createdAt":
+		if e.complexity.RaffleTicketLog.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.RaffleTicketLog.CreatedAt(childComplexity), true
+
+	case "RaffleTicketLog.displayName":
+		if e.complexity.RaffleTicketLog.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.RaffleTicketLog.DisplayName(childComplexity), true
+
 	case "RaffleTicketLog.id":
 		if e.complexity.RaffleTicketLog.ID == nil {
 			break
@@ -222,6 +239,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RaffleTicketLog.UserID(childComplexity), true
+
+	case "RaffleTicketLog.username":
+		if e.complexity.RaffleTicketLog.Username == nil {
+			break
+		}
+
+		return e.complexity.RaffleTicketLog.Username(childComplexity), true
 
 	case "RaffleTicketStat.available":
 		if e.complexity.RaffleTicketStat.Available == nil {
@@ -397,9 +421,12 @@ type RaffleTicketLog {
 	id: ID!
 	raffleID: String!
 	userID: String!
+	username: String!
+	displayName: String!
 	code: String!
 	actionType: ActionType!
 	content: String!
+	createdAt: Time!
 }
 
 type RaffleTicketStat {
@@ -1027,6 +1054,76 @@ func (ec *executionContext) _RaffleTicketLog_userID(ctx context.Context, field g
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _RaffleTicketLog_username(ctx context.Context, field graphql.CollectedField, obj *gqlmodels.RaffleTicketLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RaffleTicketLog",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Username, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RaffleTicketLog_displayName(ctx context.Context, field graphql.CollectedField, obj *gqlmodels.RaffleTicketLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RaffleTicketLog",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _RaffleTicketLog_code(ctx context.Context, field graphql.CollectedField, obj *gqlmodels.RaffleTicketLog) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1130,6 +1227,41 @@ func (ec *executionContext) _RaffleTicketLog_content(ctx context.Context, field 
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RaffleTicketLog_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodels.RaffleTicketLog) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RaffleTicketLog",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RaffleTicketStat_available(ctx context.Context, field graphql.CollectedField, obj *gqlmodels.RaffleTicketStat) (ret graphql.Marshaler) {
@@ -2834,6 +2966,16 @@ func (ec *executionContext) _RaffleTicketLog(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "username":
+			out.Values[i] = ec._RaffleTicketLog_username(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._RaffleTicketLog_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "code":
 			out.Values[i] = ec._RaffleTicketLog_code(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -2846,6 +2988,11 @@ func (ec *executionContext) _RaffleTicketLog(ctx context.Context, sel ast.Select
 			}
 		case "content":
 			out.Values[i] = ec._RaffleTicketLog_content(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._RaffleTicketLog_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

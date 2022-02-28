@@ -72,12 +72,13 @@ func raffleTicketLogsLoader(conn *pgxpool.Pool) *RaffleTicketLogLoader {
 				}
 
 				q := fmt.Sprintf(`
-					SELECT rtl.ID, rtu.raffle_id, rtu.user_id, rtu.code, rtl.action_type, rtl.content
+					SELECT rtl.ID, rtu.raffle_id, rtu.user_id, u.username, u.display_name, rtu.code, rtl.action_type, rtl.content, rtl.created_at
 					FROM raffle_ticket_users rtu 
 						INNER JOIN raffle_ticket_logs rtl ON rtl.raffle_id = rtu.raffle_id 
 							AND rtl.user_id = rtu.user_id 
 							AND rtl.code = rtu.code 
 							AND rtl.action_type = 'GIVE'
+						INNER JOIN users u ON u.id = rtu.user_id
 					WHERE rtu.raffle_id IN (%s)
 						AND rtu.user_id IN (%s)`,
 					strings.Join(raffleTicketIDCondition, ","),
@@ -91,7 +92,7 @@ func raffleTicketLogsLoader(conn *pgxpool.Pool) *RaffleTicketLogLoader {
 
 				for rows.Next() {
 					item := &gqlmodels.RaffleTicketLog{}
-					err := rows.Scan(&item.ID, &item.RaffleID, &item.UserID, &item.Code, &item.ActionType, &item.Content)
+					err := rows.Scan(&item.ID, &item.RaffleID, &item.UserID, &item.Username, &item.DisplayName, &item.Code, &item.ActionType, &item.Content, &item.CreatedAt)
 					if err != nil {
 						return nil, []error{fmt.Errorf("unable to read user raffle ticket record: %w", err)}
 					}
