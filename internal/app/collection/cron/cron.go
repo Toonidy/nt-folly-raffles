@@ -19,7 +19,7 @@ import (
 
 const (
 	TicketPrice      int    = 5
-	BonusGrinds      int    = 5
+	BonusGrinds      int    = 10
 	BonusTicketPrice int    = 50
 	BonusMostRaces   int    = 10
 	Bonus97Accuracy  int    = 5
@@ -474,7 +474,7 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 				accuracy97Users := []string{}
 				accuracy98Users := []string{}
 				accuracy99Users := []string{}
-				bonusGrindUsers := map[string]int{}
+				bonusGrindUsers := []string{}
 
 				// Gather user stats regarding comp
 				q := `
@@ -523,45 +523,42 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 
 					// Bonus Tickets: Grinds
 					if item.Races >= 50 {
-						bonusGrindUsers[item.UserID] = item.Races / BonusTicketPrice
+						bonusGrindUsers = append(bonusGrindUsers, item.UserID)
 					}
 				}
 				rows.Close()
 
 				// Distribute Bonus Tickets
 				for _, userID := range mostRaces {
-					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, BonusMostRaces, fmt.Sprintf("Bonus: Most races (%d races)", highestRaces))
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, BonusMostRaces, fmt.Sprintf("Daily Bonus: Most races of the day (%d races)", highestRaces))
 					if err != nil {
 						log.Error("unable to give raffle tickets", zap.Error(err))
 						return
 					}
 				}
 				for _, userID := range accuracy97Users {
-					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus97Accuracy, fmt.Sprintf("Bonus: Accuracy 97%% (%d tickets)", Bonus97Accuracy))
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus97Accuracy, fmt.Sprintf("Daily Bonus: Accuracy 97%% (%d tickets)", Bonus97Accuracy))
 					if err != nil {
 						log.Error("unable to give raffle tickets", zap.Error(err))
 						return
 					}
 				}
 				for _, userID := range accuracy98Users {
-					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus98Accuracy, fmt.Sprintf("Bonus: Accuracy 98%% (%d tickets)", Bonus98Accuracy))
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus98Accuracy, fmt.Sprintf("Daily Bonus: Accuracy 98%% (%d tickets)", Bonus98Accuracy))
 					if err != nil {
 						log.Error("unable to give raffle tickets", zap.Error(err))
 						return
 					}
 				}
 				for _, userID := range accuracy99Users {
-					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus99Accuracy, fmt.Sprintf("Bonus: Accuracy 99%% (%d tickets)", Bonus99Accuracy))
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus99Accuracy, fmt.Sprintf("Daily Bonus: Accuracy 99%% (%d tickets)", Bonus99Accuracy))
 					if err != nil {
 						log.Error("unable to give raffle tickets", zap.Error(err))
 						return
 					}
 				}
-				for userID, amount := range bonusGrindUsers {
-					if amount <= 0 {
-						continue
-					}
-					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, amount, fmt.Sprintf("Bonus: Doing 50 Races (%d tickets)", BonusGrinds))
+				for _, userID := range bonusGrindUsers {
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, BonusGrinds, fmt.Sprintf("Daily Bonus: Doing 50 Races (%d tickets)", BonusGrinds))
 					if err != nil {
 						log.Error("unable to give raffle tickets", zap.Error(err))
 						return
