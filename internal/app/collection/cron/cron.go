@@ -19,6 +19,8 @@ import (
 
 const (
 	TicketPrice      int    = 5
+	BonusGrinds      int    = 5
+	BonusTicketPrice int    = 50
 	BonusMostRaces   int    = 10
 	Bonus97Accuracy  int    = 5
 	Bonus98Accuracy  int    = 7
@@ -470,6 +472,7 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 				accuracy97Users := []string{}
 				accuracy98Users := []string{}
 				accuracy99Users := []string{}
+				bonusGrindUsers := map[string]int{}
 
 				// Gather user stats regarding comp
 				q := `
@@ -515,6 +518,10 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 						accuracy97Users = append(accuracy97Users, item.UserID)
 					}
 
+					// Bonus Tickets: Grinds
+					if item.Races >= 50 {
+						bonusGrindUsers[item.UserID] = item.Races / BonusTicketPrice
+					}
 				}
 				rows.Close()
 
@@ -542,6 +549,16 @@ func syncTeams(ctx context.Context, conn *pgxpool.Pool, log *zap.Logger, apiClie
 				}
 				for _, userID := range accuracy99Users {
 					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, Bonus99Accuracy, fmt.Sprintf("Bonus: Accuracy 99%% (%d tickets)", Bonus99Accuracy))
+					if err != nil {
+						log.Error("unable to give raffle tickets", zap.Error(err))
+						return
+					}
+				}
+				for userID, amount := range bonusGrindUsers {
+					if amount <= 0 {
+						continue
+					}
+					err := giveTickets(ctx, tx, bonusComp.RaffleID, userID, amount, fmt.Sprintf("Bonus: Doing 50 Races (%d tickets)", BonusGrinds))
 					if err != nil {
 						log.Error("unable to give raffle tickets", zap.Error(err))
 						return
