@@ -126,11 +126,12 @@ func (r *queryResolver) RaffleLogs(ctx context.Context, id string, includeRevoke
 		SELECT rtl.ID, rtl.raffle_id, rtl.user_id, u.username, u.display_name, rtl.code, rtl.action_type, rtl.content, rtl.created_at
 		FROM raffle_ticket_logs rtl
 			INNER JOIN users u ON u.id = rtl.user_id
+			INNER JOIN raffle_tickets rt on rt.code = rtl.code
 		WHERE rtl.raffle_id = $1`
 	if includeRevoke != nil && *includeRevoke {
 		q += ` AND rtl.action_type != 'REVOKE'`
 	}
-	q += ` ORDER BY rtl.created_at DESC`
+	q += ` ORDER BY rtl.created_at DESC, rt.sort_index DESC`
 	rows, err := r.Conn.Query(ctx, q, id)
 	if err != nil {
 		return nil, fmt.Errorf("query raffle logs failed: %w", err)
