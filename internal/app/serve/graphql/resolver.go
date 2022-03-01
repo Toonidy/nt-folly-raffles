@@ -130,6 +130,7 @@ func (r *queryResolver) RaffleLogs(ctx context.Context, id string, includeRevoke
 	if includeRevoke != nil && *includeRevoke {
 		q += ` AND rtl.action_type != 'REVOKE'`
 	}
+	q += ` ORDER BY rtl.created_at DESC`
 	rows, err := r.Conn.Query(ctx, q, id)
 	if err != nil {
 		return nil, fmt.Errorf("query raffle logs failed: %w", err)
